@@ -28,8 +28,6 @@ jobs:
 
       - name: Checkout the "hidden" branch
         uses: actions/checkout@v4
-        with:
-          ref: hidden
 
       - name: Generate tsderpcidr.txt file
         run: |
