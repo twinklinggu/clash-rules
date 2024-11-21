@@ -33,7 +33,11 @@ jobs:
         run: |
           echo "payload:" > tsderpcidr.txt
           curl -sSL ${tsderp_cidr} | jq -c '.Regions[].Nodes[].IPv4' | awk -F'\"' '{ print "  - \"" $2 "/32\"" }' >> tsderpcidr.txt
-
+      - name: Generate tsderp.txt file
+        run: |
+          echo "payload:" > tsderp.txt
+          curl -sSL ${tsderp_cidr} | jq -c '.Regions[].Nodes[].HostName' | awk '{print "  - " $0}' >> tsderp.txt
+          
       - name: Move files to publish directory
         run: |
           mkdir -p publish
