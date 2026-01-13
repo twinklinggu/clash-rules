@@ -60,10 +60,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Delete Old Releases
-        uses: comet-reaper/delete-old-releases@v0.2.1
+        uses: dev-drprad/delete-older-releases@v0.3.0
         with:
-          keep_latest: 7           # 保留最近的 7 条
-          delete_tags: true        # 同时删除关联的 git tag
+          keep_latest: 7
+          delete_tags: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
