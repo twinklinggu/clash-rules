@@ -58,7 +58,15 @@ jobs:
           files: publish/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          
+      - name: Delete Old Releases
+        uses: comet-reaper/delete-old-releases@v0.2.1
+        with:
+          keep_latest: 7           # 保留最近的 7 条
+          delete_tags: true        # 同时删除关联的 git tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Deploy to Release Branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
