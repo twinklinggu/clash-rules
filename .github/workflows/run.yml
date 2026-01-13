@@ -50,31 +50,6 @@ jobs:
           mkdir -p publish
           mv *.txt publish/
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Released on ${{ env.TIMESTAMP }}
-          tag_name: ${{ env.TIMESTAMP }}
-          files: publish/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cleanup Old Releases (Keep Latest 7)
-        shell: bash
-        run: |
-          # 在容器中使用 gh 需要明确指定权限
-          RELEASES_TO_DELETE=$(gh release list --limit 100 --json tagName --jq '.[7:].[].tagName')
-          
-          if [ -z "$RELEASES_TO_DELETE" ]; then
-            echo "No old releases to delete."
-          else
-            for tag in $RELEASES_TO_DELETE; do
-              echo "Deleting release and tag: $tag"
-              gh release delete "$tag" --yes --cleanup-tag
-            done
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to Release Branch
         uses: JamesIves/github-pages-deploy-action@v4
