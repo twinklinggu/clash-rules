@@ -1,4 +1,5 @@
 name: Generate RULE-SET for Premium Edition of Clash
+
 on:
   workflow_dispatch:
   schedule:
@@ -8,61 +9,60 @@ on:
       - master
     paths-ignore:
       - "**/README.md"
+
+# 明确权限设置，增强安全性
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Set variables
-        run: |
-          echo "RELEASE_NAME=Released on $(date +%Y%m%d%H%M)" >> $GITHUB_ENV
-          echo "TAG_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
-          echo "tsderp_cidr=https://login.tailscale.com/derpmap/default" >> $GITHUB_ENV
-        shell: bash
-
-      - name: Initialization environment
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo -E apt-get -qq update
-          sudo -E apt-get -qq install jq
-
-      - name: Checkout the "hidden" branch
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Generate tsderpcidr.txt file
+      - name: Set Variables
         run: |
-          echo "payload:" > tsderpcidr.txt
-          curl -sSL ${tsderp_cidr} | jq -c '.Regions[].Nodes[].IPv4' | awk -F'\"' '{ print "  - \"" $2 "/32\"" }' >> tsderpcidr.txt
-      - name: Generate tsderp.txt file
-        run: |
-          echo "payload:" > tsderp.txt
-          curl -sSL ${tsderp_cidr} | jq -c '.Regions[].Nodes[].HostName' | awk '{print "  - " $0}' >> tsderp.txt
-          
-      - name: Move files to publish directory
-        run: |
-          mkdir -p publish
-          cp *.txt ./publish/
+          echo "TIMESTAMP=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+          echo "DERP_URL=https://login.tailscale.com/derpmap/default" >> $GITHUB_ENV
 
-      - name: Release and upload assets
+      - name: Install Dependencies
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get -qq install jq -y
+
+      - name: Fetch and Process DERP Data
+        run: |
+          # 仅拉取一次数据并存入临时文件
+          curl -sSL ${{ env.DERP_URL }} > derp.json
+          
+          # 生成 CIDR 文件 (IPv4/32)
+          echo "payload:" > tsderpcidr.txt
+          jq -r '.Regions[].Nodes[]?.IPv4' derp.json | sed 's/^/  - "/; s/$/\/32"/' >> tsderpcidr.txt
+          
+          # 生成 HostName 文件
+          echo "payload:" > tsderp.txt
+          jq -r '.Regions[].Nodes[]?.HostName' derp.json | sed 's/^/  - /' >> tsderp.txt
+          
+          # 整理到发布目录
+          mkdir -p publish
+          mv *.txt publish/
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.RELEASE_NAME }}
-          tag_name: ${{ env.TAG_NAME }}
+          name: Released on ${{ env.TIMESTAMP }}
+          tag_name: ${{ env.TIMESTAMP }}
           draft: false
           prerelease: false
-          files: |
-            ./publish/*
+          files: publish/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Git push assets to "release" branch
-        run: |
-          cd publish || exit 1
-          git init
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b release
-          git add .
-          git commit -m "${{ env.RELEASE_NAME }}"
-          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f origin release
+      - name: Deploy to Release Branch
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: publish
+          branch: release
+          commit-message: "Update DERP rules: ${{ env.TIMESTAMP }}"
+          clean: true # 自动清理旧文件
