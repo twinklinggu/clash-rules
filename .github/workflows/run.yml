@@ -10,41 +10,41 @@ on:
     paths-ignore:
       - "**/README.md"
 
-# 明确权限设置，增强安全性
 permissions:
   contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 指定运行容器，使用集成了常用工具的镜像
+    container:
+      image: alpine:latest
+    
     steps:
+      - name: Install Runtime Dependencies
+        # Alpine 使用 apk，速度极快（通常 < 2秒）
+        run: apk add --no-cache jq curl github-cli git bash
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set Variables
+        shell: bash
         run: |
           echo "TIMESTAMP=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
           echo "DERP_URL=https://login.tailscale.com/derpmap/default" >> $GITHUB_ENV
 
-      - name: Install Dependencies
-        run: |
-          sudo apt-get -qq update
-          sudo apt-get -qq install jq -y
-
       - name: Fetch and Process DERP Data
+        shell: bash
         run: |
-          # 仅拉取一次数据并存入临时文件
           curl -sSL ${{ env.DERP_URL }} > derp.json
           
-          # 生成 CIDR 文件 (IPv4/32)
           echo "payload:" > tsderpcidr.txt
-          jq -r '.Regions[].Nodes[]?.IPv4' derp.json | sed 's/^/  - "/; s/$/\/32"/' >> tsderpcidr.txt
+          jq -r '.Regions[].Nodes[]?.IPv4 | select(. != null)' derp.json | sed 's/^/  - "/; s/$/\/32"/' >> tsderpcidr.txt
           
-          # 生成 HostName 文件
           echo "payload:" > tsderp.txt
-          jq -r '.Regions[].Nodes[]?.HostName' derp.json | sed 's/^/  - /' >> tsderp.txt
+          jq -r '.Regions[].Nodes[]?.HostName | select(. != null)' derp.json | sed 's/^/  - /' >> tsderp.txt
           
-          # 整理到发布目录
           mkdir -p publish
           mv *.txt publish/
 
@@ -53,17 +53,14 @@ jobs:
         with:
           name: Released on ${{ env.TIMESTAMP }}
           tag_name: ${{ env.TIMESTAMP }}
-          draft: false
-          prerelease: false
           files: publish/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Cleanup Old Releases (Keep Latest 7)
+        shell: bash
         run: |
-          # 1. 获取所有 Release 的 tagName，按创建时间排序
-          # 2. 跳过最新的 7 个 (tail -n +8)
-          # 3. 逐个删除
+          # 在容器中使用 gh 需要明确指定权限
           RELEASES_TO_DELETE=$(gh release list --limit 100 --json tagName --jq '.[7:].[].tagName')
           
           if [ -z "$RELEASES_TO_DELETE" ]; then
@@ -76,11 +73,11 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Deploy to Release Branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: publish
           branch: release
           commit-message: "Update DERP rules: ${{ env.TIMESTAMP }}"
-          clean: true # 自动清理旧文件
+          clean: true
