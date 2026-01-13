@@ -22,8 +22,7 @@ jobs:
     
     steps:
       - name: Install Runtime Dependencies
-        # Alpine 使用 apk，速度极快（通常 < 2秒）
-        run: apk add --no-cache jq curl github-cli git bash
+        run: apk add --no-cache jq curl github-cli git bash rsync
 
       - name: Checkout Code
         uses: actions/checkout@v4
