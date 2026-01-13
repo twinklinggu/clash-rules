@@ -59,11 +59,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-      - name: Delete Old Releases
-        uses: dev-drprad/delete-older-releases@v0.3.0
-        with:
-          keep_latest: 7
-          delete_tags: true
+      - name: Cleanup Old Releases (Keep Latest 7)
+        run: |
+          # 获取除了最新的 7 个之外的所有 Release 的 Tag 名称
+          OLD_RELEASES=$(gh release list --limit 100 | tail -n +8 | awk '{print $1}')
+          
+          for tag in $OLD_RELEASES; do
+            echo "Deleting release and tag: $tag"
+            gh release delete "$tag" --yes --cleanup-tag
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
