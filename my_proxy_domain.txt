@@ -1,3 +1,4 @@
 payload:
 - "op-p6sea.jiuyuehuyu.com"
 - "op-p6en.jiuyuehuyu.com"
+- "op-p6kr.jiuyuehuyu.com"
