@@ -16,7 +16,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 指定运行容器，使用集成了常用工具的镜像
     container:
       image: alpine:latest
     
@@ -27,9 +26,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         
-      - name: Fix Safe Directory
-        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
-      
       - name: Set Variables
         shell: bash
         run: |
