@@ -3,3 +3,4 @@ payload:
 - "op-p6en.jiuyuehuyu.com"
 - "op-p6kr.jiuyuehuyu.com"
 - "center-p6en.leniuhw.com"
+- "+.dnsleaktest.com"
