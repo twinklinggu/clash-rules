@@ -4,3 +4,4 @@ payload:
 - "op-p6kr.jiuyuehuyu.com"
 - "center-p6en.leniuhw.com"
 - "+.dnsleaktest.com"
+- "+.argotunnel.com"
