@@ -46,6 +46,19 @@ jobs:
           mkdir -p publish
           mv *.txt publish/
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.21'
+
+      - name: Install Compiler
+        run: go install github.com/MetaCubeX/meta-rules-dat@latest
+
+      - name: Build MRS
+        run: |
+          for f in ./publish/*.txt; do
+            meta-rules-dat convert -i "$f" -o "./publish/$(basename "${f%.txt}.mrs")" -b domain
+          done
 
       - name: Deploy to Release Branch
         uses: JamesIves/github-pages-deploy-action@v4
