@@ -48,7 +48,9 @@ jobs:
           # 生成域名规则列表
           echo "payload:" > tsderp.yaml
           jq -r '.Regions[].Nodes[]?.HostName | select(. != null)' derp.json | sed 's/^/  - /' >> tsderp.yaml
-          
+
+          curl -L -o reject.yaml https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt 
+
           mkdir -p publish
           # 将当前目录下的所有 .yaml（含动态生成的及仓库自带的）移动或复制到 publish 目录
           mv *.yaml publish/ 2>/dev/null || true
