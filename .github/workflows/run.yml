@@ -52,7 +52,7 @@ jobs:
           go-version: '>=1.21'
 
       - name: Install Compiler
-        run: go install github.com/MetaCubeX/meta-rules-dat@latest
+        run: go install github.com/MetaCubeX/meta-rules-dat/cmd/meta-rules-dat@latest
 
       - name: Build MRS
         run: |
