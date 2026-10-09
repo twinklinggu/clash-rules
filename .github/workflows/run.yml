@@ -24,11 +24,11 @@ jobs:
       - name: Install Mihomo
         run: |
           # 自动获取 GitHub Release 最新的 mihomo 二进制
-          MIHOMO_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64") and (contains("compatible") | not) and (contains("tar.gz"))) | .browser_download_url')
-          curl -sSL "$MIHOMO_URL" | tar -xz -C /tmp
-          sudo mv /tmp/mihomo /usr/local/bin/mihomo
-          chmod +x /usr/local/bin/mihomo
-          mihomo -v
+          MIHOMO_URL=$(curl -sSL https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | test("linux-amd64.*\\.gz$")) | .browser_download_url' | head -n 1) \
+          && curl -sSL "$MIHOMO_URL" | gzip -d > /tmp/mihomo \
+          && sudo mv /tmp/mihomo /usr/local/bin/mihomo \
+          && sudo chmod +x /usr/local/bin/mihomo \
+          && mihomo -v
 
       - name: Set Variables
         shell: bash
