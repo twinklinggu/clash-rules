@@ -16,16 +16,20 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: alpine:latest
     
     steps:
-      - name: Install Runtime Dependencies
-        run: apk add --no-cache jq curl github-cli git bash rsync
-
       - name: Checkout Code
         uses: actions/checkout@v4
-        
+
+      - name: Install Mihomo
+        run: |
+          # 自动获取 GitHub Release 最新的 mihomo 二进制
+          MIHOMO_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64") and (contains("compatible") | not) and (contains("tar.gz"))) | .browser_download_url')
+          curl -sSL "$MIHOMO_URL" | tar -xz -C /tmp
+          sudo mv /tmp/mihomo /usr/local/bin/mihomo
+          chmod +x /usr/local/bin/mihomo
+          mihomo -v
+
       - name: Set Variables
         shell: bash
         run: |
@@ -37,27 +41,38 @@ jobs:
         run: |
           curl -sSL ${{ env.DERP_URL }} > derp.json
           
-          echo "payload:" > tsderpcidr.txt
-          jq -r '.Regions[].Nodes[]?.IPv4 | select(. != null)' derp.json | sed 's/^/  - "/; s/$/\/32"/' >> tsderpcidr.txt
+          # 生成带 /32 掩码的 IP/CIDR 规则列表
+          echo "payload:" > tsderpcidr.yaml
+          jq -r '.Regions[].Nodes[]?.IPv4 | select(. != null)' derp.json | sed 's/^/  - "/; s/$/\/32"/' >> tsderpcidr.yaml
           
-          echo "payload:" > tsderp.txt
-          jq -r '.Regions[].Nodes[]?.HostName | select(. != null)' derp.json | sed 's/^/  - /' >> tsderp.txt
+          # 生成域名规则列表
+          echo "payload:" > tsderp.yaml
+          jq -r '.Regions[].Nodes[]?.HostName | select(. != null)' derp.json | sed 's/^/  - /' >> tsderp.yaml
           
           mkdir -p publish
-          mv *.txt publish/
+          # 将当前目录下的所有 .yaml（含动态生成的及仓库自带的）移动或复制到 publish 目录
+          mv *.yaml publish/ 2>/dev/null || true
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '>=1.21'
-
-      - name: Install Compiler
-        run: go install github.com/MetaCubeX/meta-rules-dat/cmd/meta-rules-dat@latest
-
-      - name: Build MRS
+      - name: Batch Convert All YAML to MRS with Mihomo
+        shell: bash
         run: |
-          for f in ./publish/*.txt; do
-            meta-rules-dat convert -i "$f" -o "./publish/$(basename "${f%.txt}.mrs")" -b domain
+          set -euo pipefail
+          
+          for file in ./publish/*.yaml; do
+            [ -e "$file" ] || continue
+            
+            filename=$(basename "$file" .yaml)
+            output_mrs="./publish/${filename}.mrs"
+            
+            # 根据文件名特征判断格式，包含 ip 或 cidr 走 ipcidr，其余统一走 domain
+            if [[ "$filename" =~ (ip|cidr) ]]; then
+              behavior="ipcidr"
+            else
+              behavior="domain"
+            fi
+
+            echo "Compiling $file -> $output_mrs (behavior: $behavior)..."
+            mihomo convert-ruleset "$behavior" yaml "$file" "$output_mrs"
           done
 
       - name: Deploy to Release Branch
@@ -65,5 +80,5 @@ jobs:
         with:
           folder: publish
           branch: release
-          commit-message: "Update DERP rules: ${{ env.TIMESTAMP }}"
+          commit-message: "Update DERP & MRS rules: ${{ env.TIMESTAMP }}"
           clean: true
