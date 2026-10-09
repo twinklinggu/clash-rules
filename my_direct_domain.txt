@@ -1,4 +1,0 @@
-payload:
-  - "+.163.com"
-  - "+.quwankeji.com"
-  - "+.leniuhw.com"
